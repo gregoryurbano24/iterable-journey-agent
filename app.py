@@ -1,5 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
+import PIL.Image
 
 # 1. Page Configuration
 st.set_page_config(page_title="Iterable Journey Guide", page_icon="🏈", layout="centered")
@@ -111,7 +112,26 @@ model = genai.GenerativeModel(
 
 # 5. Initialize Chat History in Streamlit Session State
 if "chat_session" not in st.session_state:
-    st.session_state.chat_session = model.start_chat(history=[])
+    # Load your screenshot (ensure the filename matches exactly what you uploaded)
+    form_image = PIL.Image.open("form_screenshot.png")
+    
+    # Start the chat with the image already loaded into the agent's memory
+    st.session_state.chat_session = model.start_chat(history=[
+        {
+            "role": "user", 
+            "parts": ["Here is a screenshot of the Iterable Journey Request form for your reference.", form_image]
+        },
+        {
+            "role": "model", 
+            "parts": ["Understood. I have reviewed the screenshot and will use it to guide the user."]
+        }
+    ])
+
+# Display past messages (we skip the first 2 messages so the image upload stays hidden in the background)
+for message in st.session_state.chat_session.history[2:]:
+    role = "assistant" if message.role == "model" else "user"
+    with st.chat_message(role):
+        st.markdown(message.parts[0].text)
 
 # Display past messages
 for message in st.session_state.chat_session.history:
