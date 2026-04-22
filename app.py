@@ -8,7 +8,7 @@ st.title("AMBSE Iterable Journey Assistant")
 st.write("I'm here to help you complete the Iterable Journey Request Form correctly so we can get to work faster. What are you planning to build?")
 
 # 2. Securely load your API Key
-API_KEY = st.secrets["GEMINI_API_KEY"]
+API_KEY = st.secrets["AIzaSyC-MEmwO21vqWW19MOb3rxfPwYsro1EHog"]
 genai.configure(api_key=API_KEY)
 
 # 3. The System Prompt 
