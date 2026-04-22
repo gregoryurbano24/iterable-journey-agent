@@ -112,29 +112,36 @@ model = genai.GenerativeModel(
 
 # 5. Initialize Chat History in Streamlit Session State
 if "chat_session" not in st.session_state:
-    # Load your screenshot (ensure the filename matches exactly what you uploaded)
-    form_image = PIL.Image.open("form_screenshot.png")
+    # Load your screenshots (Update these with your EXACT file names from GitHub)
+    img1 = PIL.Image.open("form_screenshot1.png")
+    img2 = PIL.Image.open("form_screenshot2.png")
+    img3 = PIL.Image.open("form_screenshot3.png")
+    img4 = PIL.Image.open("form_screenshot4.png")
+    img5 = PIL.Image.open("form_screenshot5.png")
+    img6 = PIL.Image.open("form_screenshot6.png")
+    img7 = PIL.Image.open("form_screenshot7.png")
+    img8 = PIL.Image.open("form_screenshot8.png")
+    img9 = PIL.Image.open("form_screenshot9.png")
+    img10 = PIL.Image.open("form_screenshot10.png")
+    img11 = PIL.Image.open("form_screenshot11.png")
+    img12 = PIL.Image.open("form_screenshot12.png")
+    # If you have a 3rd or 4th, just add them like: img3 = PIL.Image.open("file_3.png")
     
-    # Start the chat with the image already loaded into the agent's memory
+    # Start the chat with the images already loaded into the agent's memory
     st.session_state.chat_session = model.start_chat(history=[
         {
             "role": "user", 
-            "parts": ["Here is a screenshot of the Iterable Journey Request form for your reference.", form_image]
+            # Make sure to list all your img variables in this brackets array!
+            "parts": ["Here are screenshots of the Iterable Journey Request form for your reference.", img1, img2]
         },
         {
             "role": "model", 
-            "parts": ["Understood. I have reviewed the screenshot and will use it to guide the user."]
+            "parts": ["Understood. I have reviewed the screenshots and will use them to guide the user."]
         }
     ])
 
 # Display past messages (we skip the first 2 messages so the image upload stays hidden in the background)
 for message in st.session_state.chat_session.history[2:]:
-    role = "assistant" if message.role == "model" else "user"
-    with st.chat_message(role):
-        st.markdown(message.parts[0].text)
-
-# Display past messages
-for message in st.session_state.chat_session.history:
     role = "assistant" if message.role == "model" else "user"
     with st.chat_message(role):
         st.markdown(message.parts[0].text)
