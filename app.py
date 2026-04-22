@@ -1,6 +1,5 @@
 import streamlit as st
 import google.generativeai as genai
-import PIL.Image
 from google.api_core.exceptions import ResourceExhausted
 
 # 1. Page Configuration
@@ -43,55 +42,57 @@ It exists to:
 * Enable effort forecasting, KPI alignment, and Monday.com task creation
 * Reduce downstream rework caused by ambiguity
 
-## How the Form Is Structured
-Expect guidance needs to increase as users move down the form:
-1.  Journey Identification & Classification
-2.  Audience & Scale
-3.  Measurement & Success
-4.  Readiness & Dependencies
-5.  Submission & System Context
+## Form Field Specifics (From Visuals)
 
-## Key Sections & What to Watch For
+**Universal Rule:** If a user is stuck on ANY section, remind them they can check the "Flag for consultative review" box, which turns the request into a working session with Emily's Lifecycle team.
 
-### 1. Journey Name
-Why it matters: Used across Iterable, Monday.com, and reporting.
-Check for: Clear purpose + brand + trigger or outcome. No vague labels (“test,” “newsletter”).
-Common issue: Users think it’s cosmetic — it’s operational.
+**Section 01: Requester & Brand**
+* **Brand Options:** Atlanta Falcons (ATL), Atlanta United FC (ATLUTD), Mercedes-Benz Stadium (MBS), Cross-Brand (AMBSE). Note: Cross-Brand is reserved for AMBSE-level campaigns; push users to pick a single brand whenever possible.
+* **Launch Date:** Must be formatted as mm/dd/yyyy.
 
-### 2. Brand
-Why it matters: Drives ownership, approvals, and benchmarks.
-Check for: One clear primary brand. Multi-brand ideas still need a single owner.
-Prompt if: Description implies multiple brands.
+**Section 02: Objective & Success**
+* **Primary Business Objective:** REQUIRED. Must be a minimum of 100 characters. 
+* **Why this objective, why now?:** REQUIRED. Must be a minimum of 60 characters.
+* **Success Metric & Target:** Requires selecting a KPI from a dropdown AND providing a specific target value (e.g., "6% lift vs. holdout").
 
-### 3. Journey Type (e.g., lifecycle, event-based, promotional)
-Why it matters: Impacts triggers, cadence, KPIs, and build complexity.
-Check for alignment between: Journey type, Audience definition, Primary KPI.
-Common issue: Lifecycle selected for one-time campaigns.
+**Section 03: Journey Classification (CRITICAL SECTION)**
+* **Options:**
+    1. One-Time Campaign (Single send at a scheduled moment. No ongoing logic.)
+    2. Event-Triggered (Fires when a fan takes an action like purchase, RSVP, abandon.)
+    3. Behavioral Lifecycle (Ongoing program responding to fan state like onboarding, winback.)
+    4. Transactional (Operational/confirmation messages like tickets, receipts.)
+* **Important Rule:** A lifecycle journey requires a holdout group and predictive goal; a one-time campaign does not.
 
-### 4. Audience Definition
-Why it matters: Determines feasibility, compliance, scale, and risk.
-Check for: Clear inclusion criteria, exclusions, behavior/status-based logic.
-Push beyond: “All fans,” “everyone who bought”
-Common issue: Audience described as a goal, not criteria.
+**Section 04: Audience & Suppression**
+* **Inputs:** Requires Audience Source (dropdown), Estimated Size, Inclusion Criteria, and Suppression/Exclusions.
+* **Compliance Check:** Users MUST check a box confirming the audience has appropriate opt-in for the selected channels (required for CASL/CAN-SPAM).
 
-### 5. Estimated Audience Size
-Why it matters: Capacity planning and send-volume forecasting.
-Check for: A reasonable estimate, stated assumptions.
-Common issue: Left blank or wildly inflated.
+**Section 05: Trigger & Data Dependencies**
+* **Conditional Logic:** Remind users that this section branches dynamically based on the exact Journey Classification they chose back in Section 03. 
 
-### 6. Primary KPI
-Why it matters: Anchors build decisions and post-launch success.
-Check for: One primary KPI only, matches the journey type.
-Explain: Multiple metrics are fine, but only one can be primary.
+**Section 06: Channels & Messages**
+* **Options:** Email, Push Notification, SMS, In-App Message, Web Push/Embed. (Must select at least 1).
+* **Inputs:** Requires a Total Message Count and selecting the Creative Asset Status from a dropdown.
 
-### 7. Open Items / Dependencies
-Why it matters: Surfaces blockers without stopping intake.
-Check for: Honest acknowledgment of what’s not ready. Scope/dependency alignment.
-Normalize: Listing gaps does not block submission.
+**Section 07: Personalization & Dynamic Content**
+* **Dynamic Fields:** First name, Team preference, Favorite player, Tenure/STM status, Last event attended, Upcoming purchased event, Seat section/level, City/DMA, Preferred language, Account tier.
+* **Important Rule:** If ANY dynamic fields are selected, a "Fallback Strategy" becomes strictly REQUIRED so there are no "Hi NULL" errors.
 
-### 8. Submission & Monday.com Context
-What users need to understand: This creates structured work in Monday.com. Submission ≠ immediate execution.
-Your role: Set expectations about what happens after submit.
+**Section 08: Timing, Frequency & Conflicts**
+* **Inputs:** Requires Preferred Send Window and Observe Quiet Hours dropdowns.
+* **Rule:** Standard AMBSE quiet hours are 9pm–8am local time. 
+
+**Section 09: Testing & Measurement**
+* **A/B Test Variable:** REQUIRED. Options: Subject Line, Content / Copy, Send Time, Creative / Visual, Frequency / Cadence, No Test (launch-only). 
+* **Important Rule:** Users must pick exactly ONE variable. Testing multiple at once invalidates the results.
+* **Holdout Group %:** RECOMMENDED. Reminder: Lifecycle journeys require a holdout for incremental measurement.
+* **Other Required Fields:** Attribution Window (dropdown) and Reporting Cadence (dropdown) are both mandatory.
+
+**Section 10: Governance & Naming**
+* **Journey Name:** Auto-generates based on earlier sections (Doc #1 conventions).
+* **Important Rule:** Strongly discourage users from overriding the auto-generated name. It is the default for discoverability.
+* **Journey Owner & Required Approvers:** Both REQUIRED. Approvers must include names/roles of everyone who must sign off before launch (e.g., Brand Director, Legal, Emily Barnhill).
+* **Sunset / Review Date:** REQUIRED. "Evergreen" is allowed, but a review date (e.g., quarterly) MUST be set to prevent "zombie sends."
 
 ## Cross-Field Misalignment You Should Flag
 * KPI vs Type: Revenue KPI on informational alert
@@ -111,33 +112,10 @@ model = genai.GenerativeModel(
 
 # 5. Initialize Chat History in Streamlit Session State
 if "chat_session" not in st.session_state:
-    try:
-        # Automatically load form_screenshot1.png through form_screenshot12.png
-        form_images = []
-        for i in range(1, 13):
-            form_images.append(PIL.Image.open(f"form_screenshot{i}.png"))
-        
-        # Combine the text prompt and the list of images
-        initial_user_parts = ["Here are screenshots of the Iterable Journey Request form for your reference."] + form_images
-        
-        # Start the chat with the images already loaded into the agent's memory
-        st.session_state.chat_session = model.start_chat(history=[
-            {
-                "role": "user", 
-                "parts": initial_user_parts
-            },
-            {
-                "role": "model", 
-                "parts": ["Understood. I have reviewed the screenshots and will use them to guide the user."]
-            }
-        ])
-    except FileNotFoundError as e:
-        # This will tell you exactly which number it failed to find if one is missing!
-        st.error(f"⚠️ Error: Could not find image file: {e.filename}. Please double-check that all 12 files are uploaded to GitHub and named correctly.")
-        st.stop()
+    st.session_state.chat_session = model.start_chat(history=[])
 
-# Display past messages (skipping the first 2 so the image upload stays hidden)
-for message in st.session_state.chat_session.history[2:]:
+# Display past messages
+for message in st.session_state.chat_session.history:
     role = "assistant" if message.role == "model" else "user"
     with st.chat_message(role):
         st.markdown(message.parts[0].text)
