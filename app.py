@@ -105,7 +105,7 @@ Core Agent Principles: Guide, don’t decide. Clarify, don’t correct harshly. 
 # 4. Initialize the Model
 # We use gemini-1.5-flash because it is fast, free, and great at following system instructions
 model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
+    model_name="gemini-2.5-flash",
     system_instruction=system_instruction
 )
 
