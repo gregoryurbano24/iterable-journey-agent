@@ -1,18 +1,18 @@
 import streamlit as st
 import google.generativeai as genai
 import PIL.Image
+from google.api_core.exceptions import ResourceExhausted
 
 # 1. Page Configuration
 st.set_page_config(page_title="Iterable Journey Guide", page_icon="🏈", layout="centered")
 st.title("AMBSE Iterable Journey Assistant")
 st.write("I'm here to help you complete the Iterable Journey Request Form correctly so we can get to work faster. What are you planning to build?")
 
-# 2. Securely load your API Key (from Streamlit Secrets)
-# You will set this in the Streamlit Cloud dashboard later
+# 2. Securely load your API Key
 API_KEY = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=API_KEY)
 
-# 3. The System Prompt (Your exact instructions)
+# 3. The System Prompt 
 system_instruction = """
 You are the AMBSE Iterable Journey Request Assistant.  
 Your job is to help marketing associates complete the Iterable Journey Request Form correctly and completely so lifecycle work can begin with minimal rework.
@@ -104,7 +104,6 @@ Core Agent Principles: Guide, don’t decide. Clarify, don’t correct harshly. 
 """
 
 # 4. Initialize the Model
-# We use gemini-1.5-flash because it is fast, free, and great at following system instructions
 model = genai.GenerativeModel(
     model_name="gemini-2.5-flash",
     system_instruction=system_instruction
@@ -112,35 +111,32 @@ model = genai.GenerativeModel(
 
 # 5. Initialize Chat History in Streamlit Session State
 if "chat_session" not in st.session_state:
-    # Load your screenshots (Update these with your EXACT file names from GitHub)
-    img1 = PIL.Image.open("form_screenshot1.png")
-    img2 = PIL.Image.open("form_screenshot2.png")
-    img3 = PIL.Image.open("form_screenshot3.png")
-    img4 = PIL.Image.open("form_screenshot4.png")
-    img5 = PIL.Image.open("form_screenshot5.png")
-    img6 = PIL.Image.open("form_screenshot6.png")
-    img7 = PIL.Image.open("form_screenshot7.png")
-    img8 = PIL.Image.open("form_screenshot8.png")
-    img9 = PIL.Image.open("form_screenshot9.png")
-    img10 = PIL.Image.open("form_screenshot10.png")
-    img11 = PIL.Image.open("form_screenshot11.png")
-    img12 = PIL.Image.open("form_screenshot12.png")
-    # If you have a 3rd or 4th, just add them like: img3 = PIL.Image.open("file_3.png")
-    
-    # Start the chat with the images already loaded into the agent's memory
-    st.session_state.chat_session = model.start_chat(history=[
-        {
-            "role": "user", 
-            # Make sure to list all your img variables in this brackets array!
-            "parts": ["Here are screenshots of the Iterable Journey Request form for your reference.", img1, img2]
-        },
-        {
-            "role": "model", 
-            "parts": ["Understood. I have reviewed the screenshots and will use them to guide the user."]
-        }
-    ])
+    try:
+        # Automatically load form_screenshot1.png through form_screenshot12.png
+        form_images = []
+        for i in range(1, 13):
+            form_images.append(PIL.Image.open(f"form_screenshot{i}.png"))
+        
+        # Combine the text prompt and the list of images
+        initial_user_parts = ["Here are screenshots of the Iterable Journey Request form for your reference."] + form_images
+        
+        # Start the chat with the images already loaded into the agent's memory
+        st.session_state.chat_session = model.start_chat(history=[
+            {
+                "role": "user", 
+                "parts": initial_user_parts
+            },
+            {
+                "role": "model", 
+                "parts": ["Understood. I have reviewed the screenshots and will use them to guide the user."]
+            }
+        ])
+    except FileNotFoundError as e:
+        # This will tell you exactly which number it failed to find if one is missing!
+        st.error(f"⚠️ Error: Could not find image file: {e.filename}. Please double-check that all 12 files are uploaded to GitHub and named correctly.")
+        st.stop()
 
-# Display past messages (we skip the first 2 messages so the image upload stays hidden in the background)
+# Display past messages (skipping the first 2 so the image upload stays hidden)
 for message in st.session_state.chat_session.history[2:]:
     role = "assistant" if message.role == "model" else "user"
     with st.chat_message(role):
@@ -152,7 +148,10 @@ if prompt := st.chat_input("Ask a question about the Iterable Journey Request Fo
     with st.chat_message("user"):
         st.markdown(prompt)
     
-    # Generate and show assistant response
+    # Generate and show assistant response with Rate Limit handling
     with st.chat_message("assistant"):
-        response = st.session_state.chat_session.send_message(prompt)
-        st.markdown(response.text)
+        try:
+            response = st.session_state.chat_session.send_message(prompt)
+            st.markdown(response.text)
+        except ResourceExhausted:
+            st.warning("⏳ We temporarily hit the free tier's speed limit! Please wait about 60 seconds and try submitting your question again.")
